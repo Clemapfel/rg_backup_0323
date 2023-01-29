@@ -1,85 +1,149 @@
 meta = {}
-meta.detail = {}
-meta.detail.n_types = 0
-meta.detail.type_instances = {}
 
-function meta.detail.add_type(type_name)
 
-    local id = meta.detail.n_types
-    meta.detail.type_ids[id] = type_name
-    meta.detail.n_types = id + 1
-    return id
+function meta.new_type(typename)
+
+    local x = {}
+    x.__meta = {}
+    x.__meta.typename = "Type"
+    x.name = typename
+    x.properties = {}
+    x.is_property_mutable = {}
+
+    return x
 end
 
-function meta.detail.get_type(id)
-    return meta.detail.type_ids[id]
+function meta.is_type(x)
+    return x.__meta ~= nil and x.name ~= nil and x.properties ~= nil and x.is_property_mutable ~= nil
 end
 
-function meta.typeof(object)
-    return meta.detail.type_ids[object.__meta.type]
+function meta.isa(x, type)
+
+    if not meta.is_type(x) then
+        error("In meta.isa: Argument is not a type")
+    end
+    return x.__meta.typename == x.name
 end
 
-function meta.isa(object, type)
-    return meta.detail.type_ids[object.__meta.type] == type
+function meta.typeof(x)
+    return x.__meta.typename
 end
 
-function meta.add_property(type, property_name, property_value)
+function meta.add_property(x, property_name, default_value)
 
-    type.__meta.properties[property_name] = property_value
-    rawset(type, "set_" .. property_name, function(this, x) this.__meta.properties[property_name] = x end)
-    rawset(type, "get_" .. property_name, function(this) return this.__meta.properties[property_name] end)
-end
+    if not meta.is_type(x) then
+        error("In meta.add_property: Argument is not a type")
+    end
 
-function meta.add_const_property(type, property_name, property_value)
-
-    type.__meta.const_properties[property_name] = property_value
-    rawset(type, "get_" .. property_name, function(this) return this.__meta.const_properties[property_name] end)
-end
-
-function meta.add_method(type)
-
-function meta.new_type(type_name)
-
-    out = {}
-    out.__meta = {}
-
-    out.__meta.const_properties = {}
-    out.__meta.properties = {}
-    out.__meta.type = meta.detail.add_type(type_name)
-
-    out.__meta.__index = function(this, key)
-
-        x = this.__meta.properties[key]
-        if (x == nil) then
-            return this.__meta.const_properties
-        else
-            return x
+    for i = 1, #property_name do
+        if (i == " ") then
+            error("In meta.add_property: Property names cannot contain a spacer");
         end
     end
 
-    out.__meta.__newindex = function(this, key, value)
+    x.properties[property_name] = default_value
+    x.is_property_mutable[property_name] = true
+end
 
-        if (this.__meta.properties[key] ~= nil) then
+function meta.has_property(x, property_name)
+
+    if (x.__meta.typename == nil) then
+        error("In meta.has_property: Value " .. x .." is not a type instance")
+    end
+
+    return x.__meta.is_property_mutable[property_name] == true or x.__meta.is_property_mutable[property_name] == false
+end
+
+function meta.add_const_property(x, property_name, default_value)
+
+    if not meta.is_type(x) then
+        error("In meta.add_const_property: Argument is not a type")
+    end
+
+    for i = 1, #property_name do
+        if (i == " ") then
+            error("In meta.add_const_property: Property names cannot contain a spacer");
+        end
+    end
+
+    x.properties[property_name] = default_value
+    x.is_property_mutable[property_name] = false
+end
+
+function meta.new(type)
+
+    if not meta.is_type(type) then
+        error("In meta.new: Argument is not a type")
+    end
+
+    local x = {}
+    x.__meta = {}
+    x.__meta.properties = type.properties
+    x.__meta.typename = type.name
+    x.__meta.is_property_mutable = type.is_property_mutable
+
+    x.__meta.__index = function(this, key)
+
+        if rawget(this, key) ~= nil then
+            return rawget(this, key)
+        end
+
+        if not meta.has_property(this, key) then
+            error("In " .. this.__meta.typename .. ".__index: " .. "No property named " .. key)
+        else
+            return this.__meta.properties[key]
+        end
+    end
+
+    x.__meta.__newindex = function(this, key, value)
+
+        if not meta.has_property(this, key) then
+            error("In " .. this.__meta.typename .. ".__newindex: " .. "No property named " .. key)
+        elseif this.__meta.is_property_mutable[key] == false then
+            error("In " .. this.__meta.typename .. ".__newindex: " .. "Property `" .. key .. "` was declared immutable")
+        else
             this.__meta.properties[key] = value
-        elseif this.__meta.const_properties[key] ~= nil then
-            error("In __newindex for object of type " .. meta.typeof(this) .. ": Trying to assign property \"" .. key .. "\" but it is declared const")
-        else
-            error("In __newindex for object of type " .. meta.typeof(this) .. ": No property with name \"" .. key .. "\". Use meta.add_property instead")
         end
     end
 
-    setmetatable(out, out.__meta)
-    meta.detail.type_instances[]
+    x.__meta.__tostring = function(this)
+
+        local out = this.__meta.typename .. ":\n"
+        for name, value in pairs(this.__meta.properties) do
+            out = out .. "  " .. name .. " = " .. tostring(value) .. "\n"
+        end
+        return out
+    end
+
+    x.__meta.__pairs = function(this) return pairs(this.__meta.properties) end
+    x.__meta.__ipairs = function(this) return ipairs(this.__meta.properties) end
+
+    for name, _ in pairs(x.__meta.properties) do
+
+        if x.__meta.is_property_mutable[name] then
+            rawset(x, "set_" .. name, function(this) return this.__meta.properties[name] end)
+        end
+
+        rawset(x, "get_" .. name, function(this, value) this.__meta.properties[name] = value end)
+    end
+
+    setmetatable(x, x.__meta)
+    return x
 end
 
 -- TEST
-instance = meta.new_type("Test_t")
-meta.add_property(instance, "mutable", 12)
-meta.add_const_property(instance, "immutable", 13)
+Entity_t = meta.new_type("Entity")
+meta.add_property(Entity_t, "property_01", 12)
+meta.add_property(Entity_t, "property_02", {})
+meta.add_const_property(Entity_t, "const_property", 1234)
 
-print(instance:get_mutable())
-instance:set_mutable(19)
-print(instance:get_mutable())
+instance = meta.new(Entity_t)
+instance:set_property_01(15)
+instance["property_02"] = {{}}
 
-print(instance:get_immutable())
-instance["immutable"] = 12
+for key, value in pairs(instance) do
+    print(key .. " -> " .. tostring(value))
+end
+
+print(instance)
+instance["const_property"] = 4321
