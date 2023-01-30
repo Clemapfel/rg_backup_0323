@@ -1,6 +1,13 @@
+--- @module meta
 meta = {}
 
+meta.types = {}
+meta.types["Type"] = true
+meta.Type = "Type"
 
+--- @brief Create new type
+--- @param typename string name of type, usually capitalized
+--- @return meta.Type
 function meta.new_type(typename)
 
     local x = {}
@@ -10,70 +17,154 @@ function meta.new_type(typename)
     x.properties = {}
     x.is_property_mutable = {}
 
+    if meta.types[typename] then
+        print("[WARNING] In meta.new_type: Redefining type `" .. typename .. "`")
+    end
+    meta.types[typename] = true
+
     return x
 end
 
+--- @brief Check if an object is a meta.Type
+--- @return boolean
 function meta.is_type(x)
     return x.__meta ~= nil and x.name ~= nil and x.properties ~= nil and x.is_property_mutable ~= nil
 end
 
+--- @brief Check if object is an instance
+--- @return boolean
+function meta.is_instance(x)
+    return x.__meta ~= nil and x.__meta.typename ~= nil
+end
+
+--- @brief Check if object is an instance of a type
+--- @param x any
+--- @param type meta.Type
+--- @return boolean
 function meta.isa(x, type)
 
     if not meta.is_type(x) then
-        error("In meta.isa: Argument is not a type")
+        error("[ERROR] In meta.isa: Argument is not a type")
     end
     return x.__meta.typename == x.name
 end
 
+--- @brief Get type of instance
+--- @param x any
+--- @return meta.Type
 function meta.typeof(x)
     return x.__meta.typename
 end
 
+--- @brief Add mutable property to type
+--- @param x meta.Type
+--- @param property_name string
+--- @param default_value any
+--- @return void
 function meta.add_property(x, property_name, default_value)
 
     if not meta.is_type(x) then
-        error("In meta.add_property: Argument is not a type")
+        error("[ERROR] In meta.add_property: Argument is not a type")
     end
 
     for i = 1, #property_name do
-        if (i == " ") then
-            error("In meta.add_property: Property names cannot contain a spacer");
+        if (property_name:sub(i, i) == " ") then
+            error("[ERROR] In meta.add_property: Property names cannot contain a spacer");
         end
+    end
+
+    do
+        if load("local " .. property_name .. " = 1234") == nil then
+            error("[ERROR] In met.add_property: Name `" .. property_name .. "` is not a valid identifier")
+        end
+    end
+
+    if (x.is_property_mutable[property_name] ~= nil) then
+        print("[WARNING] In meta.add_propery: Type aready has a property name `" .. property_name .. "`" )
     end
 
     x.properties[property_name] = default_value
     x.is_property_mutable[property_name] = true
 end
 
-function meta.has_property(x, property_name)
-
-    if (x.__meta.typename == nil) then
-        error("In meta.has_property: Value " .. x .." is not a type instance")
-    end
-
-    return x.__meta.is_property_mutable[property_name] == true or x.__meta.is_property_mutable[property_name] == false
-end
-
+--- @brief Add immutable property to type
+--- @param x meta.Type
+--- @param property_name string
+--- @param default_value any
+--- @return void
 function meta.add_const_property(x, property_name, default_value)
 
     if not meta.is_type(x) then
-        error("In meta.add_const_property: Argument is not a type")
+        error("[ERROR] In meta.add_const_property: Argument is not a type")
     end
 
     for i = 1, #property_name do
         if (i == " ") then
-            error("In meta.add_const_property: Property names cannot contain a spacer");
+            error("[ERROR] In meta.add_const_property: Property names cannot contain a spacer");
         end
+    end
+
+    if (x.is_property_mutable[property_name] ~= nil) then
+        print("[WARNING] In meta.add_const_propery: Type aready has a property name `" .. property_name .. "`" )
     end
 
     x.properties[property_name] = default_value
     x.is_property_mutable[property_name] = false
 end
 
+--- @brief Test if type or type isntance has property
+--- @param x meta.Instance
+--- @param property_name string
+--- @return boolean
+function meta.has_property(x, property_name)
+
+    if not (meta.is_instance(x) or meta.is_type(x)) then
+        error("[ERROR] In meta.has_property: Value " .. x .." is not a type instance or type")
+    end
+
+    return x.__meta.is_property_mutable[property_name] == true or x.__meta.is_property_mutable[property_name] == false
+end
+
+--- @brief Get value of property
+--- @param x meta.Instance
+--- @param propertyname string
+--- @return any
+function meta.get_property(x, property_name)
+
+    if not meta.is_instance then
+        error("[ERROR] In meta.get_property: Value " .. x .." is not a type instance")
+    elseif x.__meta.is_property_mutable[property_name] == nil then
+        error("[ERROR] In meta.get_property: Instance has no property name `" .. property_name .. "`")
+    end
+
+    return x.__meta.properties[property_name]
+end
+
+--- @brief Set value of property, fails if the property was declared const
+--- @param x meta.Instance
+--- @param property_name string
+--- @param value any
+--- @return void
+function meta.set_property(x, property_name, value)
+
+    if not meta.is_instance then
+        error("[ERROR] In meta.get_property: Value " .. x .." is not a type instance")
+    elseif x.__meta.is_property_mutable[property_name] == nil then
+        error("[ERROR] In meta.get_property: Instance has no property name `" .. property_name .. "`")
+    elseif x.__meta.is_property_mutable[property_name] == false then
+        error("[ERROR] In meta.get_property: Property `" .. property_name .. "` was declared const")
+    end
+
+    x.__meta.properties[property_name] = value
+end
+
+--- @brief Instantiate a type
+--- @param type meta.Type
+--- @return meta.Instance
 function meta.new(type)
 
     if not meta.is_type(type) then
-        error("In meta.new: Argument is not a type")
+        error("[ERROR] In meta.new: Argument is not a type")
     end
 
     local x = {}
@@ -89,20 +180,20 @@ function meta.new(type)
         end
 
         if not meta.has_property(this, key) then
-            error("In " .. this.__meta.typename .. ".__index: " .. "No property named " .. key)
+            error("[ERROR] In " .. this.__meta.typename .. ".__index: " .. "No property named " .. key)
         else
-            return this.__meta.properties[key]
+            return meta.get_property(this, key)
         end
     end
 
     x.__meta.__newindex = function(this, key, value)
 
         if not meta.has_property(this, key) then
-            error("In " .. this.__meta.typename .. ".__newindex: " .. "No property named " .. key)
+            error("[ERROR] In " .. this.__meta.typename .. ".__newindex: " .. "No property named " .. key)
         elseif this.__meta.is_property_mutable[key] == false then
-            error("In " .. this.__meta.typename .. ".__newindex: " .. "Property `" .. key .. "` was declared immutable")
+            error("[ERROR] In " .. this.__meta.typename .. ".__newindex: " .. "Property `" .. key .. "` was declared immutable")
         else
-            this.__meta.properties[key] = value
+            meta.set_property(this, key, value)
         end
     end
 
@@ -133,9 +224,9 @@ end
 
 -- TEST
 Entity_t = meta.new_type("Entity")
-meta.add_property(Entity_t, "property_01", 12)
-meta.add_property(Entity_t, "property_02", {})
-meta.add_const_property(Entity_t, "const_property", 1234)
+meta.add_property(Entity_t, "_01", 12)
+meta.add_property(Entity_t, "_02", {})
+meta.add_const_property(Entity_t, "_03", 1234)
 
 instance = meta.new(Entity_t)
 instance:set_property_01(15)
