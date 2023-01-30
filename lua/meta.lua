@@ -2,7 +2,8 @@
 meta = {}
 
 meta.types = {}
-meta.types["Type"] = true
+
+--- @brief The `Type` type, all types have this type as its typename
 meta.Type = "Type"
 
 --- @brief Create new type
@@ -20,15 +21,47 @@ function meta.new_type(typename)
     if meta.types[typename] then
         print("[WARNING] In meta.new_type: Redefining type `" .. typename .. "`")
     end
-    meta.types[typename] = true
+    meta.types[typename] = x
 
+    setmetatable(x, x.__meta)
     return x
+end
+meta.types["Type"] = meta.new_type("Type")
+
+--- @brief Check if an object is a lua table
+--- @return boolean
+function meta.is_table(x)
+    return type(x) == "table"
+end
+
+--- @brief Check if an object is a lua number
+--- @return boolean
+function meta.is_number(x)
+    return type(x) == "number"
+end
+
+--- @brief Check if an object is a lua string
+--- @return boolean
+function meta.is_string(x)
+    return type(x) == "string"
+end
+
+--- @brief Check if an object is a lua string
+--- @return boolean
+function meta.is_boolean(x)
+    return type(x) == "boolean"
+end
+
+--- @brief Check if an object is a lua nil
+--- @return boolean
+function meta.is_nil(x)
+    return type(x) == "nil"
 end
 
 --- @brief Check if an object is a meta.Type
 --- @return boolean
 function meta.is_type(x)
-    return x.__meta ~= nil and x.name ~= nil and x.properties ~= nil and x.is_property_mutable ~= nil
+    return meta.is_table(x) and x.__meta ~= nil and x.name ~= nil and x.properties ~= nil and x.is_property_mutable ~= nil
 end
 
 --- @brief Check if object is an instance
@@ -46,6 +79,11 @@ function meta.isa(x, type)
     if not meta.is_type(x) then
         error("[ERROR] In meta.isa: Argument is not a type")
     end
+
+    if type == meta.Type then
+        return meta.is_type(x)
+    end
+
     return x.__meta.typename == x.name
 end
 
@@ -53,7 +91,7 @@ end
 --- @param x any
 --- @return meta.Type
 function meta.typeof(x)
-    return x.__meta.typename
+    return meta.types[x.__meta.typename]
 end
 
 --- @brief Add mutable property to type
@@ -148,14 +186,59 @@ end
 function meta.set_property(x, property_name, value)
 
     if not meta.is_instance then
-        error("[ERROR] In meta.get_property: Value " .. x .." is not a type instance")
-    elseif x.__meta.is_property_mutable[property_name] == nil then
-        error("[ERROR] In meta.get_property: Instance has no property name `" .. property_name .. "`")
+        error("[ERROR] In meta.get_property: Value " .. tostring(x) .." is not a type")
+    elseif x.meta.has_property(x, property_name) then
+        error("[ERROR] In meta.get_property: Instance has no property with identifier `" .. property_name .. "`")
     elseif x.__meta.is_property_mutable[property_name] == false then
         error("[ERROR] In meta.get_property: Property `" .. property_name .. "` was declared const")
     end
 
     x.__meta.properties[property_name] = value
+end
+
+--- @brief Set wether a property is mutable
+--- @param type meta.Type
+--- @param property_name string
+--- @param is_mutable boolean
+--- @return void
+function meta.set_property_mutable(type, property_name, is_mutable)
+
+    if not meta.is_type(type) then
+        error("[ERROR] In meta.get_property: Value " .. tostring(x) .." is not a type")
+    elseif meta.has_property(x, propery_name) then
+        error("[ERROR] In meta.get_property: Instance has no property with identifier `" .. property_name .. "`")
+    end
+
+    x.__meta.is_property_mutable[property_name] = is_mutable
+end
+
+--- @brief Query wether a property is mutable
+--- @param type meta.Type
+--- @param property_name string
+--- @return boolean
+function meta.get_property_mutable(type, property_name, is_mutable)
+
+    if not meta.is_type(type) then
+        error("[ERROR] In meta.get_property: Value " .. tostring(x) .." is not a type")
+    elseif meta.has_property(x, propery_name) then
+        error("[ERROR] In meta.get_property: Instance has no property with identifier `" .. property_name .. "`")
+    end
+
+    return x.__meta.is_property_mutable[property_name]
+end
+
+--- @brief Create a type from a table, syntactic sugar
+--- @param table table
+--- @return meta.Type
+function meta.new_type_from(typename, table)
+
+    x = meta.new_type(typename)
+
+    for key, value in pairs(table) do
+        meta.add_property(x, key, value)
+    end
+
+    return x
 end
 
 --- @brief Instantiate a type
@@ -223,18 +306,9 @@ function meta.new(type)
 end
 
 -- TEST
-Entity_t = meta.new_type("Entity")
-meta.add_property(Entity_t, "_01", 12)
-meta.add_property(Entity_t, "_02", {})
-meta.add_const_property(Entity_t, "_03", 1234)
+T = meta.new_type_from("Entity", {
+    test = 12
+})
 
-instance = meta.new(Entity_t)
-
-instance[1] = 1234
-
-for key, value in pairs(instance) do
-    print(key .. " -> " .. tostring(value))
-end
-
-print(instance)
-instance["const_property"] = 4321
+instance = meta.new(T)
+print(meta.typeof(instance))
