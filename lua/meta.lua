@@ -180,7 +180,7 @@ function meta.new(type)
         end
 
         if not meta.has_property(this, key) then
-            error("[ERROR] In " .. this.__meta.typename .. ".__index: " .. "No property named " .. key)
+            error("[ERROR] In " .. this.__meta.typename .. ".__index: " .. "No property with identifier `" .. key .. "`")
         else
             return meta.get_property(this, key)
         end
@@ -189,7 +189,7 @@ function meta.new(type)
     x.__meta.__newindex = function(this, key, value)
 
         if not meta.has_property(this, key) then
-            error("[ERROR] In " .. this.__meta.typename .. ".__newindex: " .. "No property named " .. key)
+            error("[ERROR] In " .. this.__meta.typename .. ".__index: " .. "No property with identifier `" .. key .. "`")
         elseif this.__meta.is_property_mutable[key] == false then
             error("[ERROR] In " .. this.__meta.typename .. ".__newindex: " .. "Property `" .. key .. "` was declared immutable")
         else
@@ -229,8 +229,8 @@ meta.add_property(Entity_t, "_02", {})
 meta.add_const_property(Entity_t, "_03", 1234)
 
 instance = meta.new(Entity_t)
-instance:set_property_01(15)
-instance["property_02"] = {{}}
+
+instance[1] = 1234
 
 for key, value in pairs(instance) do
     print(key .. " -> " .. tostring(value))
