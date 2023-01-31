@@ -1,32 +1,6 @@
 --- @module meta
 meta = {}
-
 meta.types = {}
-
---- @brief The `Type` type, all types have this type as its typename
-meta.Type = "Type"
-
---- @brief Create new type
---- @param typename string name of type, usually capitalized
---- @return meta.Type
-function meta.new_type(typename)
-
-    local x = {}
-    x.__meta = {}
-    x.__meta.typename = "Type"
-    x.name = typename
-    x.properties = {}
-    x.is_property_mutable = {}
-
-    if meta.types[typename] then
-        print("[WARNING] In meta.new_type: Redefining type `" .. typename .. "`")
-    end
-    meta.types[typename] = x
-
-    setmetatable(x, x.__meta)
-    return x
-end
-meta.types["Type"] = meta.new_type("Type")
 
 --- @brief Check if an object is a lua table
 --- @return boolean
@@ -305,10 +279,48 @@ function meta.new(type)
     return x
 end
 
--- TEST
-T = meta.new_type_from("Entity", {
-    test = 12
-})
+--- @brief Create new type
+--- @param typename string name of type, usually capitalized
+--- @return meta.Type
+function meta.new_type(typename)
 
-instance = meta.new(T)
-print(meta.typeof(instance))
+    local x = {}
+    x.__meta = {}
+    x.__meta.typename = "Type"
+    x.name = typename
+    x.properties = {}
+    x.is_property_mutable = {}
+
+    if meta.types[typename] then
+        print("[WARNING] In meta.new_type: Redefining type `" .. typename .. "`")
+    end
+    meta.types[typename] = x
+
+    setmetatable(x, x.__meta)
+    return x
+end
+
+local _properties = {
+    name = "Type",
+    properties = {},
+    is_property_mutable = {}
+}
+
+local _is_property_mutable = {
+    name = true,
+    properties = true,
+    is_property_mutable = true
+}
+
+TypeType = {
+    name = "TypeType",
+    properties = _properties,
+    is_property_mutable = _is_property_mutable,
+    __meta = {
+        typename = "Type",
+        properties = _properties,
+        is_property_mutable = _is_property_mutable
+    }
+}
+
+meta.Type = meta.new(TypeType)
