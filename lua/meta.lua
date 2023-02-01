@@ -41,7 +41,7 @@ end
 --- @brief Check if object is an instance
 --- @return boolean
 function meta.is_instance(x)
-    return x.__meta ~= nil and x.__meta.typename ~= nil
+    return meta.is_table(x) and x.__meta ~= nil and x.__meta.typename ~= nil
 end
 
 --- @brief Check if object is an instance of a type
@@ -50,7 +50,7 @@ end
 --- @return boolean
 function meta.isa(x, type)
 
-    if not meta.is_type(x) then
+    if not meta.is_type(type) then
         error("[ERROR] In meta.isa: Argument is not a type")
     end
 
@@ -201,20 +201,6 @@ function meta.get_property_mutable(type, property_name, is_mutable)
     return x.__meta.is_property_mutable[property_name]
 end
 
---- @brief Create a type from a table, syntactic sugar
---- @param table table
---- @return meta.Type
-function meta.new_type_from(typename, table)
-
-    x = meta.new_type(typename)
-
-    for key, value in pairs(table) do
-        meta.add_property(x, key, value)
-    end
-
-    return x
-end
-
 --- @brief Instantiate a type
 --- @param type meta.Type
 --- @return meta.Instance
@@ -228,7 +214,6 @@ function meta.new(type)
     x.__meta = {}
     x.__meta.properties = type.properties
     x.__meta.typename = type.name
-    x.__meta.is_property_mutable = type.is_property_mutable
 
     x.__meta.__index = function(this, key)
 
@@ -279,48 +264,5 @@ function meta.new(type)
     return x
 end
 
---- @brief Create new type
---- @param typename string name of type, usually capitalized
---- @return meta.Type
-function meta.new_type(typename)
+type = meta.new_type("Test")
 
-    local x = {}
-    x.__meta = {}
-    x.__meta.typename = "Type"
-    x.name = typename
-    x.properties = {}
-    x.is_property_mutable = {}
-
-    if meta.types[typename] then
-        print("[WARNING] In meta.new_type: Redefining type `" .. typename .. "`")
-    end
-    meta.types[typename] = x
-
-    setmetatable(x, x.__meta)
-    return x
-end
-
-local _properties = {
-    name = "Type",
-    properties = {},
-    is_property_mutable = {}
-}
-
-local _is_property_mutable = {
-    name = true,
-    properties = true,
-    is_property_mutable = true
-}
-
-TypeType = {
-    name = "TypeType",
-    properties = _properties,
-    is_property_mutable = _is_property_mutable,
-    __meta = {
-        typename = "Type",
-        properties = _properties,
-        is_property_mutable = _is_property_mutable
-    }
-}
-
-meta.Type = meta.new(TypeType)
