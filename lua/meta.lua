@@ -127,7 +127,34 @@ function meta.add_property(type, property_name, initial_value, is_private)
     type.is_property_private[property_name] =  is_private
 end
 
---- @brief Instantiate a typeless object
+--- @brief Set whether property of meta.Type is declared private
+--- @param type meta.Type
+--- @param property_name string
+--- @param is_private boolean
+--- @returns void
+function meta.set_property_is_private(type, property_name, is_private)
+
+    if not meta.is_type(type) then
+        error("[ERROR] In meta.add_property: Object is not a type")
+    end
+
+    type.is_property_private[property_name] = is_private
+end
+
+function meta.add_super_type(type, super)
+
+    if not meta.is_type(type) then
+        error("[ERROR] In meta.add_property: Subtype Object is not a type")
+    end
+
+    if not meta.is_type(super) then
+        error("[ERROR] In meta.add_property: Supertype Object is not a type")
+    end
+
+    type.super[#type.super + 1] = super
+end
+
+--- @brief Instantiate a typeless, empty object
 --- @returns meta instance
 function meta._new()
 
@@ -143,7 +170,9 @@ function meta._new()
         local m = rawget(this, "__meta")
 
         if m.is_property_private[key] == nil then
-            error("[ERROR] In " .. m.typename .. ".__newindex: Object has no property named `" .. key .. "`")
+            error("[ERROR] In " .. m.typename .. ".__index: Object has no property named `" .. key .. "`")
+        elseif key == "__meta" or m.is_property_private[key] == true then
+            error("[ERROR] In " .. m.typename .. ".__index: Property `" .. key .. "` was declared private")
         end
 
         return m.properties[key]
@@ -155,7 +184,7 @@ function meta._new()
 
         if m.is_property_private[key] == nil then
             error("[ERROR] In " .. m.typename .. ".__newindex: Object has no property named `" .. key .. "`")
-        elseif m.is_property_private[key] == true then
+        elseif key == "__meta" or m.is_property_private[key] == true then
             error("[ERROR] In " .. m.typename .. ".__newindex: Property `" .. key .. "` was declared private")
         end
 
@@ -165,7 +194,6 @@ function meta._new()
     x.__meta.__tostring = function(this)
 
         local m = rawget(this, "__meta")
-
         local out = m.typename .. " (Instance):\n"
 
         local public = {}
@@ -231,18 +259,22 @@ end
 --- @returns meta.Type
 function meta.new_type(typename)
 
+    if typename == nil then
+        error("[ERROR] In meta.new_type: typename cannot be nil")
+    end
+
     local x = meta._new()
     local m = rawget(x, "__meta")
 
     m.typename = "Type"
 
-    m.properties["properties"] = {}
-    m.properties["is_property_private"] = {}
     m.properties["name"] = typename
-
-    m.is_property_private["properties"] = false
-    m.is_property_private["is_property_private"] = false
     m.is_property_private["name"] = false
+
+    for _, property in pairs({"properties", "is_property_private", "super"}) do
+        m.properties[property] = {}
+        m.is_property_private[property] = false
+    end
 
     m.__tostring = function(this)
 
@@ -294,6 +326,11 @@ function meta.new_type(typename)
     return x
 end
 
+meta._public_label = "public"
+meta._private_label = "private"
+meta._super_label = "super"
+meta._is_property_private_by_default = true
+
 --- @brief Create a new meta.Type from a table, syntactically convenient
 --- @param typename string Name of type
 --- @param table table Table with properties, as well as `public` or `private` subtable
@@ -308,22 +345,30 @@ function meta.new_type_from(typename, table)
     rawset(x.__meta.properties, "name", typename)
     rawset(x.__meta.properties, "typename", "Type")
 
-    if (table.public ~= nil) then
-        for name, value in pairs(table.public) do
+    local public = table[meta._public_label]
+    if public ~= nil then
+        for name, value in pairs() do
             meta.add_property(x, name, value, false)
         end
     end
 
-    if (table.private ~= nil) then
-        for name, value in pairs(table.private) do
+    local private = table[meta._private_label]
+    if private ~= nil then
+        for name, value in pairs(private) do
             meta.add_property(x, name, value, true)
         end
     end
 
-    for name, value in pairs(table) do
+    local super = table[meta._super_label]
+    if super ~= nil then
+        for _, value in pairs(super) do
+            meta.add_super_type(x, value)
+        end
+    end
 
-        if not (name == "public" or name == "private") then
-            meta.add_property(x, name, value, false)
+    for name, value in pairs(table) do
+        if name ~= meta._public_label and name ~= meta._private_label and name ~= meta._super_label then
+            meta.add_property(x, name, value, meta._is_property_private_by_default)
         end
     end
 
@@ -343,16 +388,28 @@ function meta.new(type)
     local x_meta = rawget(x, "__meta")
     x_meta.typename = type.name
 
-    for name, value in pairs(type.__meta.properties.properties) do
-        x_meta.properties[name] = value
-        x_meta.is_property_private[name] = type.__meta.properties.is_property_private[name]
+    collect_properties = function(type_in, properties, is_property_private)
+
+        for name, value in pairs(type_in.__meta.properties.properties) do
+            properties[name] = value
+            is_property_private[name] = type_in.__meta.properties.is_property_private[name]
+        end
+
+        local super = type_in.super
+
+        if super ~= nil then
+            for _, super_type in pairs(super) do
+                collect_properties(super_type, properties, is_property_private)
+            end
+        end
     end
+    collect_properties(type, x_meta.properties, x_meta.is_property_private)
 
     setmetatable(x, x.__meta)
     return x
 end
 
---- @brief Access the property of an object
+--- @brief Access the property of an object irregardless of scope
 --- @param x meta.Object
 --- @param property_name string
 --- @returns value of property
@@ -365,7 +422,7 @@ function meta.rawget_property(x, property_name)
     return rawget(x.__meta.properties)[property_name]
 end
 
---- @brief Mutate property of an object
+--- @brief Mutate property of an object irregardless of scope
 --- @param x meta.Object
 --- @param property_name string
 --- @param value any
@@ -373,32 +430,28 @@ end
 function meta.rawset_property(x, property_name, new_value)
 
     if not meta.is_instance(x) then
-        error("[ERROR] In meta.rawset_property: Object is not a Type instance")
+        error("[ERROR] In meta.rawget_property: Object is not a Type instance")
     end
 
     x.__meta.properties[property_name] = new_value
 end
 
-Inner_t = meta.new_type_from("Inner_t", {
-    _a = 0,
-    _b = "a"
+
+Super1 = meta.new_type_from("Super1", {
+    super1_property = "super1"
 })
 
-Test_t = meta.new_type_from("Test_t", {
-
-    public = {
-        public_property = Inner_t()
-    },
-
-    private = {
-        private_property = "abcd"
-    },
-
-    method = function(this)
-        this.public_property = 1234
-        meta.rawset_property(this, "private_property", "adwa")
-    end
+Super2 = meta.new_type_from("Super2", {
+    super2_property = "super2"
 })
 
-local instance = Test_t()
+Type = meta.new_type_from("Type",{
+    super = {Super1, Super2},
+    type_property = "Type"
+})
+
+instance = meta.new(Type)
 print(instance)
+
+
+
