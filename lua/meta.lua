@@ -141,6 +141,10 @@ function meta.set_property_is_private(type, property_name, is_private)
     type.is_property_private[property_name] = is_private
 end
 
+--- @brief Add super type, type will inherit all properties from all its supertypes
+--- @param type meta.Type
+--- @param super meta.Type
+--- @returns void
 function meta.add_super_type(type, super)
 
     if not meta.is_type(type) then
@@ -152,6 +156,38 @@ function meta.add_super_type(type, super)
     end
 
     type.super[#type.super + 1] = super
+end
+
+--- @brief Is a subtype of b
+--- @param a meta.Type
+--- @param b meta.Type
+--- @returns boolean
+function meta.is_subtype_of(a, b)
+
+    if not meta.is_type(a) then
+        error("[ERROR] In meta.is_subtype_of: Subtype Object is not a type")
+    end
+
+    if not meta.is_type(b) then
+        error("[ERROR] In meta.is_subtype_of: Supertype Object is not a type")
+    end
+
+    if a.super == nil then return false end
+    for _, super in pairs(a.super) do
+        if super.name == b.name then
+            return true
+        end
+    end
+
+    return false
+end
+
+--- @brief Is b sutype of a
+--- @param a meta.Type
+--- @param b meta.Type
+--- @returns boolean
+function meta.is_supertype_of(a, b)
+    return mea.is_subtype_of(b, a)
 end
 
 --- @brief Instantiate a typeless, empty object
@@ -253,6 +289,8 @@ function meta._new()
     setmetatable(x, x.__meta)
     return x
 end
+
+meta._types = {}
 
 --- @brief Create a new meta.Type
 --- @param typename string
@@ -451,7 +489,7 @@ Type = meta.new_type_from("Type",{
 })
 
 instance = meta.new(Type)
-print(instance)
+print(meta.is_subtype_of(Type, Super1))
 
 
 
