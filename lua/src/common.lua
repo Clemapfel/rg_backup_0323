@@ -50,7 +50,11 @@ end
 --- @param id string
 --- @param object any
 --- @return string
-function serialize(object_identifier, object)
+function serialize(object_identifier, object, inject_sourcecode)
+
+    if inject_sourcecode == nil then
+        inject_sourcecode = false
+    end
 
     get_indent = function (n_indent_tabs)
 
@@ -154,43 +158,48 @@ function serialize(object_identifier, object)
             insert(buffer, string.format("%q", object))
 
         elseif type(object) == "table" then
-            insert(buffer, "{\n")
-            n_indent_tabs = n_indent_tabs + 1
 
-            local n_entries = sizeof(object)
-            local index = 0
-            for key, value in pairs(object) do
+            if sizeof(object) > 0 then
+                insert(buffer, "{\n")
+                n_indent_tabs = n_indent_tabs + 1
 
-                if type(key) == "string" then
-                    insert(buffer, get_indent(n_indent_tabs), key, " = ")
+                local n_entries = sizeof(object)
+                local index = 0
+                for key, value in pairs(object) do
 
-                elseif type(key) == "number" then
+                    if type(key) == "string" then
+                        insert(buffer, get_indent(n_indent_tabs), key, " = ")
 
-                    if key ~= index+1 then
-                        insert(buffer, get_indent(n_indent_tabs), "[", key, "] = ")
+                    elseif type(key) == "number" then
+
+                        if key ~= index+1 then
+                            insert(buffer, get_indent(n_indent_tabs), "[", key, "] = ")
+                        else
+                            insert(buffer, get_indent(n_indent_tabs))
+                        end
+                    end
+
+                    serialize_inner(buffer, value, n_indent_tabs)
+                    index = index +1
+
+                    if index < n_entries then
+                        insert(buffer, ",\n")
                     else
-                        insert(buffer, get_indent(n_indent_tabs))
+                        insert(buffer, "\n")
                     end
                 end
 
-                serialize_inner(buffer, value, n_indent_tabs)
-                index = index +1
-
-                if index < n_entries then
-                    insert(buffer, ",\n")
-                else
-                    insert(buffer, "\n")
-                end
+                insert(buffer, get_indent(n_indent_tabs-1), "}")
+            else
+                insert(buffer, "{}")
             end
 
-            insert(buffer, get_indent(n_indent_tabs-1), "}")
-        elseif type(object) == "function" then
+        elseif type(object) == "function" and inject_sourcecode then
             insert(buffer, get_source_code(object))
         elseif type(object) == "nil" then
             insert(buffer, "nil")
         else
             insert(buffer, "[" .. tostring(object) .. "]")
-            --error("cannot serialize an object of type " .. type(object))
         end
     end
 
