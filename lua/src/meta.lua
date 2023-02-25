@@ -39,18 +39,6 @@ function meta.is_nil(x)
     return type(x) == "nil"
 end
 
---- @brief Does table contain at least one entry
---- @param x table
---- @returns boolean
-function meta.is_empty(x)
-
-    if not meta.is_table(x) then
-        return true
-    else
-        return next(x) == nil
-    end
-end
-
 --- @brief Is x an instance of a meta.Type
 --- @param x any
 --- @returns boolean
@@ -101,7 +89,7 @@ function meta.has_property(x, property)
     end
 
     local is_private = rawget(x, "__meta").is_property_private[property]
-    return is_private == false or is_private == true
+    return type(is_private) == "boolean"
 end
 
 --- @brief Was property of meta instance declared private?
@@ -148,11 +136,20 @@ end
 function meta.add_super_type(type, super)
 
     if not meta.is_type(type) then
-        error("[ERROR] In meta.add_property: Subtype Object is not a type")
+        error("[ERROR] In meta.add_super_type: Subtype Object is not a type")
     end
 
     if not meta.is_type(super) then
-        error("[ERROR] In meta.add_property: Supertype Object is not a type")
+        error("[ERROR] In meta.add_super_type: Supertype Object is not a type")
+    end
+
+    local super_super = super.super
+    if super_super ~= nil then
+        for _, t in pairs(super_super) do
+            if t.name == type.name then
+                error("[ERROR] In meta.add_super_type: Cyclic inheritance detected, `" .. type.name .. "` is already a supertype of `" .. super.name .. "`")
+            end
+        end
     end
 
     type.super[#type.super + 1] = super
@@ -165,11 +162,11 @@ end
 function meta.is_subtype_of(a, b)
 
     if not meta.is_type(a) then
-        error("[ERROR] In meta.is_subtype_of: Subtype Object is not a type")
+        error("[ERROR] In meta.is_subtype: Subtype Object is not a type")
     end
 
     if not meta.is_type(b) then
-        error("[ERROR] In meta.is_subtype_of: Supertype Object is not a type")
+        error("[ERROR] In meta.is_subtype: Supertype Object is not a type")
     end
 
     if a.super == nil then return false end
@@ -187,7 +184,7 @@ end
 --- @param b meta.Type
 --- @returns boolean
 function meta.is_supertype_of(a, b)
-    return mea.is_subtype_of(b, a)
+    return meta.is_subtype_of(b, a)
 end
 
 --- @brief Instantiate a typeless, empty object
@@ -474,22 +471,38 @@ function meta.rawset_property(x, property_name, new_value)
     x.__meta.properties[property_name] = new_value
 end
 
+--- @brief unit test
+function meta._test()
+    test.start_test("meta")
 
-Super1 = meta.new_type_from("Super1", {
-    super1_property = "super1"
-})
+    test.assert_that("is_string", meta.is_string("abcdef"))
+    test.assert_that("is_table", meta.is_table({}))
+    test.assert_that("is_number", meta.is_number(1234))
+    test.assert_that("is_boolean", meta.is_boolean(true))
+    test.assert_that("is_nil", meta.is_nil(nil))
 
-Super2 = meta.new_type_from("Super2", {
-    super2_property = "super2"
-})
+    local Type = meta.new_type("Type")
 
-Type = meta.new_type_from("Type",{
-    super = {Super1, Super2},
-    type_property = "Type"
-})
+    test.assert_that("type: is_type", meta.is_type(Type))
+    test.assert_that("type: is_instance", meta.is_instance(Type))
+    test.assert_that("type: typeof", meta.typeof(Type) == "Type")
 
-instance = meta.new(Type)
-print(meta.is_subtype_of(Type, Super1))
+    local Super = meta.new_type("Super")
+    meta.add_super_type(Type, Super)
+    test.assert_that("type: is_supertype_of", meta.is_supertype_of(Super, Type))
+    test.assert_that("type: is_subtype_of", meta.is_subtype_of(Type, Super))
 
+    meta.add_property(Type, "public_property", 1234, false)
+    meta.add_property(Type, "private_property", {}, true)
 
+    local instance = meta.new(Type)
 
+    test.assert_that("instance: is_instance", meta.is_instance(instance))
+    test.assert_that("instance: typeof", meta.typeof(instance) == Type.name)
+    test.assert_that("instance: has_property", meta.has_property(instance, "public_property"))
+    test.assert_that("instance: is_property_private", meta.is_property_private(instance, "private_property"))
+    test.assert_that("instance: property access", instance.public_property == 1234)
+    test.assert_that_errors("instance: private access", function() return instance.private_property end)
+
+    test.end_test()
+end
