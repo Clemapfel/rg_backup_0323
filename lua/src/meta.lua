@@ -108,7 +108,7 @@ end
 function meta.add_property(type, property_name, initial_value, is_private)
 
     if not meta.is_type(type) then
-        log.error("[ERROR] In meta.add_property: Object is not a type")
+        error("[ERROR] In meta.add_property: Object is not a type")
     end
 
     type.properties[property_name] = initial_value
@@ -123,7 +123,7 @@ end
 function meta.set_property_is_private(type, property_name, is_private)
 
     if not meta.is_type(type) then
-        log.error("[ERROR] In meta.add_property: Object is not a type")
+        error("[ERROR] In meta.add_property: Object is not a type")
     end
 
     type.is_property_private[property_name] = is_private
@@ -136,18 +136,18 @@ end
 function meta.add_super_type(type, super)
 
     if not meta.is_type(type) then
-        log.error("[ERROR] In meta.add_super_type: Subtype Object is not a type")
+        error("[ERROR] In meta.add_super_type: Subtype Object is not a type")
     end
 
     if not meta.is_type(super) then
-        log.error("[ERROR] In meta.add_super_type: Supertype Object is not a type")
+        error("[ERROR] In meta.add_super_type: Supertype Object is not a type")
     end
 
     local super_super = super.super
     if super_super ~= nil then
         for _, t in pairs(super_super) do
             if t.name == type.name then
-                log.error("[ERROR] In meta.add_super_type: Cyclic inheritance detected, `" .. type.name .. "` is already a supertype of `" .. super.name .. "`")
+                error("[ERROR] In meta.add_super_type: Cyclic inheritance detected, `" .. type.name .. "` is already a supertype of `" .. super.name .. "`")
             end
         end
     end
@@ -162,11 +162,11 @@ end
 function meta.is_subtype_of(a, b)
 
     if not meta.is_type(a) then
-        log.error("[ERROR] In meta.is_subtype: Subtype Object is not a type")
+        error("[ERROR] In meta.is_subtype: Subtype Object is not a type")
     end
 
     if not meta.is_type(b) then
-        log.error("[ERROR] In meta.is_subtype: Supertype Object is not a type")
+        error("[ERROR] In meta.is_subtype: Supertype Object is not a type")
     end
 
     if a.super == nil then return false end
@@ -203,9 +203,9 @@ function meta._new()
         local m = rawget(this, "__meta")
 
         if m.is_property_private[key] == nil then
-            log.error("[ERROR] In " .. m.typename .. ".__index: Object has no property named `" .. key .. "`")
+            error("[ERROR] In " .. m.typename .. ".__index: Object has no property named `" .. key .. "`")
         elseif key == "__meta" or m.is_property_private[key] == true then
-            log.error("[ERROR] In " .. m.typename .. ".__index: Property `" .. key .. "` was declared private")
+            error("[ERROR] In " .. m.typename .. ".__index: Property `" .. key .. "` was declared private")
         end
 
         return m.properties[key]
@@ -216,9 +216,9 @@ function meta._new()
         local m = rawget(this, "__meta")
 
         if m.is_property_private[key] == nil then
-            log.error("[ERROR] In " .. m.typename .. ".__newindex: Object has no property named `" .. key .. "`")
+            error("[ERROR] In " .. m.typename .. ".__newindex: Object has no property named `" .. key .. "`")
         elseif key == "__meta" or m.is_property_private[key] == true then
-            log.error("[ERROR] In " .. m.typename .. ".__newindex: Property `" .. key .. "` was declared private")
+            error("[ERROR] In " .. m.typename .. ".__newindex: Property `" .. key .. "` was declared private")
         end
 
         m.properties[key] = value
@@ -295,7 +295,7 @@ meta._types = {}
 function meta.new_type(typename)
 
     if typename == nil then
-        log.error("[ERROR] In meta.new_type: typename cannot be nil")
+        error("[ERROR] In meta.new_type: typename cannot be nil")
     end
 
     local x = meta._new()
@@ -373,7 +373,7 @@ meta._is_property_private_by_default = true
 function meta.new_type_from(typename, table)
 
     if not meta.is_table(table) then
-        log.error("[ERROR] In meta.new_type_from: Function argument is not a table")
+        error("[ERROR] In meta.new_type_from: Function argument is not a table")
     end
 
     local x = meta.new_type(typename)
@@ -416,7 +416,7 @@ end
 function meta.new(type)
 
     if not meta.is_type(type) then
-        log.error("[ERROR] In meta.new: Argument is not a type")
+        error("[ERROR] In meta.new: Argument is not a type")
     end
 
     local x = meta._new()
@@ -451,7 +451,7 @@ end
 function meta.rawget_property(x, property_name)
 
     if not meta.is_instance(x) then
-        log.error("[ERROR] In meta.rawset_property: Object is not a Type instance")
+        error("[ERROR] In meta.rawset_property: Object is not a Type instance")
     end
 
     return rawget(x.__meta.properties)[property_name]
@@ -465,7 +465,7 @@ end
 function meta.rawset_property(x, property_name, new_value)
 
     if not meta.is_instance(x) then
-        log.error("[ERROR] In meta.rawget_property: Object is not a Type instance")
+        error("[ERROR] In meta.rawget_property: Object is not a Type instance")
     end
 
     x.__meta.properties[property_name] = new_value

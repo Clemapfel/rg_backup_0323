@@ -13,10 +13,6 @@ log.ERROR = -1
 --- @param level number: one of log.INFO, log.WARNING or log.ERROR
 function log.print(message, level)
 
-    if not meta.is_string(message) then
-        io.write("[ERROR] In log.message: `message` argument is not a string")
-    end
-
     if level == nil then level = log.INFO end
 
     local message_buffer = {}
@@ -48,4 +44,16 @@ end
 --- @param message string
 function log.error(message)
     log.print(message, log.ERROR)
+end
+
+function log._test()
+    test.start_test("log")
+
+    test.assert_that_not_errors("non-string", log.print(1234))
+    test.assert_that_errors("non-level error", log.print("test", 4))
+    test.assert_that_not_errors("info",  log.info("Info Message"))
+    test.assert_that_not_errors("warning",  log.warning("Warning Message"))
+    test.assert_that_not_errors("error",  log.error("Error Message"))
+
+    test.end_test()
 end

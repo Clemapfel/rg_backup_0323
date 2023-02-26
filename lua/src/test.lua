@@ -72,6 +72,21 @@ function test.assert_that_errors(name, condition)
     test._add_result(test._current_name, name, not status)
 end
 
+--- @brief assert that function errors
+function test.assert_that_not_errors(name, condition)
+
+    if test._current_name == "" then
+        io.write("[ERROR] In test.assert_that_not_errors: No test is active, call test.start_test first")
+    end
+
+    if type(name) ~= "string" then
+        io.write("[ERROR] In test.assert_that_not_errors: `name` argument is not a string")
+    end
+
+    local status, _ = pcall(condition)
+    test._add_result(test._current_name, name, status)
+end
+
 --- @brief end testing suite
 function test.end_test()
 
