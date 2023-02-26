@@ -477,6 +477,10 @@ end
 function meta.new_enum(values)
 
     local out = {}
+    out.__meta = {}
+    out.__meta.typename = "Enum"
+    out.__meta.values = {}
+
     local used_values = {}
 
     for name, value in pairs(values) do
@@ -493,25 +497,16 @@ function meta.new_enum(values)
             error("In meta.new_enum: Duplicate value, key `" .. name .. "` and `" .. used_values[value] .. "` both have the same value `" .. tostring(value) .. "`")
         end
 
-        if out[name] ~= nil then
-            error("In meta.new_enum: Duplicate key `" .. name .. "`")
-        end
-
         used_values[value] = name
-        out[name] = value
+        out.__meta.values[name] = value
     end
 
-    out.__meta = {}
-
     out.__meta.__newindex = function(instance, key, value)
-        error("In enum.__newindex: Cannot assign an enum value")
-        return
+        error("In enum.__newindex: Cannot modify an enum or its values")
     end
 
     out.__meta.__index = function(instance, key)
-        if (key ~= "__meta") then
-            return rawget(instance, key)
-        end
+        return instance.__meta.values[key]
     end
 
     setmetatable(out, out.__meta)
@@ -551,14 +546,13 @@ function meta._test()
     test.assert_that("instance: property access", instance.public_property == 1234)
     test.assert_that_errors("instance: private access", function() return instance.private_property end)
 
-    local enum = meta.new_enum("Enum", {
+    local enum = meta.new_enum({
         A = 12,
         B = 13,
         C = 14
     })
 
-    meta.A = 19
-
+    test.assert_that("enum: type", meta.typeof(enum) == "Enum")
     test.assert_that("enum: value", enum.A == 12)
     test.assert_that_errors("enum: constness", function() enum.A = 19 end)
     test.assert_that_errors("enum: value type", function() local test = meta.new_enum({A = {}}) end)
@@ -566,10 +560,3 @@ function meta._test()
 
     test.end_test()
 end
-
-enum = meta.new_enum({
-    test = 1234,
-    test = 14
-})
-
-io.write(enum.test)
