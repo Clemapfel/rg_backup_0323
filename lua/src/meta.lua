@@ -1,3 +1,5 @@
+require "test"
+
 --- @brief Type-system, formalizes private and public fields
 meta = {}
 
@@ -471,6 +473,51 @@ function meta.rawset_property(x, property_name, new_value)
     x.__meta.properties[property_name] = new_value
 end
 
+--- @brief generate new enum
+function meta.new_enum(values)
+
+    local out = {}
+    local used_values = {}
+
+    for name, value in pairs(values) do
+
+        if not (meta.is_number(value) or meta.is_string(value)) then
+            error("In meta.new_enum: Value is not a number or string")
+        end
+
+        if not meta.is_string(name) then
+            error("In meta.new_enum: Key `" .. tostring(name) .. "` is not a string")
+        end
+
+        if used_values[value] ~= nil then
+            error("In meta.new_enum: Duplicate value, key `" .. name .. "` and `" .. used_values[value] .. "` both have the same value `" .. tostring(value) .. "`")
+        end
+
+        if out[name] ~= nil then
+            error("In meta.new_enum: Duplicate key `" .. name .. "`")
+        end
+
+        used_values[value] = name
+        out[name] = value
+    end
+
+    out.__meta = {}
+
+    out.__meta.__newindex = function(instance, key, value)
+        error("In enum.__newindex: Cannot assign an enum value")
+        return
+    end
+
+    out.__meta.__index = function(instance, key)
+        if (key ~= "__meta") then
+            return rawget(instance, key)
+        end
+    end
+
+    setmetatable(out, out.__meta)
+    return out;
+end
+
 --- @brief unit test
 function meta._test()
     test.start_test("meta")
@@ -504,5 +551,25 @@ function meta._test()
     test.assert_that("instance: property access", instance.public_property == 1234)
     test.assert_that_errors("instance: private access", function() return instance.private_property end)
 
+    local enum = meta.new_enum("Enum", {
+        A = 12,
+        B = 13,
+        C = 14
+    })
+
+    meta.A = 19
+
+    test.assert_that("enum: value", enum.A == 12)
+    test.assert_that_errors("enum: constness", function() enum.A = 19 end)
+    test.assert_that_errors("enum: value type", function() local test = meta.new_enum({A = {}}) end)
+    test.assert_that_errors("enum: duplicate", function() local test = meta.new_enum({A = {13}, A = {14}}) end)
+
     test.end_test()
 end
+
+enum = meta.new_enum({
+    test = 1234,
+    test = 14
+})
+
+io.write(enum.test)

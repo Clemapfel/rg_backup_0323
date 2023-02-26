@@ -5,5 +5,8 @@ require "src/log"
 require "src/common"
 require "src/meta"
 
+rat_game = {}
+require "battle"
+
 
 

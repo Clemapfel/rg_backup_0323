@@ -1,3 +1,5 @@
+require "test"
+
 log = {}
 
 log._error_label = "[ERROR]"
