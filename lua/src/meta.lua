@@ -114,6 +114,7 @@ function meta.new_enum(values)
         return instance.__meta.values[key]
     end
 
+
     out.__meta.__pairs = function(this)
         return pairs(this.__meta.values)
     end

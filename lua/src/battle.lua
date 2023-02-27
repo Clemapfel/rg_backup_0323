@@ -111,6 +111,10 @@ rat._BattleEntity = meta.new_type_from("BattleEntity", {
     raise_speed = meta.Function(),
     lower_speed = meta.Function(),
     reset_speed = meta.Function(),
+
+    add_status_ailment = meta.Function(),
+    remove_status_ailment = meta.Function(),
+    has_status = meta.Function()
 });
 
 --- @brief BattleEntity ctor
@@ -121,9 +125,17 @@ function rat.BattleEntity(id)
         error("[ERROR] In BattleEntity.ctor: `id` argument has to be  string")
     end
 
-    return rat._BattleEntity({
+    local out = rat._BattleEntity({
         _id = id
     })
+
+    local status = {}
+    for _, ailment in pairs(rat.StatusAilment) do
+        status[ailment] = false
+    end
+
+    meta.rawset_property(out, "_status_ailments", status)
+    return out
 end
 
 function rat._BattleEntity.get_id(entity)
@@ -499,4 +511,41 @@ function rat._BattleEntity.set_ap(entity, value)
     meta.rawset_property(entity, clamp(value, 0, entity:get_ap_base()))
 end
 
+--- @brief add a status ailment to entity, respects status logic
+--- @param entity BattleEntity
+--- @param status StatusAilment
+--- @return void
+function rat._BattleEntity.add_status_ailment(entity, status)
 
+    if meta.typeof(entity) ~= "BattleEntity" then
+        error("[ERROR] In rat.add_status_ailment: Argument #1 is not a BattleEntity")
+    end
+
+    if not meta.is_enum_value(rat.StatusAilment, status) then
+        error("[ERROR] In rat.add_status_ailment: Argument #2 is not a StatusAilment")
+    end
+
+    meta.rawset_property(entity, "_status_ailments", status)
+end
+
+--- @brief does entity have a status ailment
+--- @param entity BattleEntity
+--- @param status StatusAilment
+--- @return boolean
+function rat._BattleEntity.has_status_ailment(entity, status)
+
+    if meta.typeof(entity) ~= "BattleEntity" then
+        error("[ERROR] In rat.add_status_ailment: Argument #1 is not a BattleEntity")
+    end
+
+    if not meta.is_enum_value(StatusAilment, status) then
+        error("[ERROR] In rat.add_status_ailment: Argument #2 is not a StatusAilment")
+    end
+
+    return meta.rawget_property(entity, "_status_ailments")[status]
+end
+
+instance = rat.BattleEntity("test")
+instance:add_status_ailment(instance, rat.StatusAilment.DEAD)
+
+print(instance:has_status_ailment(instance, rat.StatusAilment.DEAD))
