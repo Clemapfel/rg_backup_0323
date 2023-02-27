@@ -46,6 +46,24 @@ function is_empty(x)
     end
 end
 
+--- @brief clamp
+--- @param x number
+--- @param lower_bound number
+--- @param upper_bound number
+--- @return number
+function clamp(x, lower_bound, upper_bound)
+
+    if x < lower_bound then
+        x = lower_bound
+    end
+
+    if x > upper_bound then
+        x = upper_bound
+    end
+
+    return x
+end
+
 --- @brief convert arbitrary object to string
 --- @param id string
 --- @param object any

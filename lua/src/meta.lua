@@ -3,7 +3,7 @@ meta = {}
 
 --- @brief default value for function member
 function meta.Function()
-    return function() error("invalid function call") end
+    return function() error("[ERROR] In meta.Function: Attempting to call an uninitialized function") end
 end
 
 --- @brief default value for string member
@@ -19,6 +19,11 @@ end
 --- @brief default value for table member
 function meta.Table()
     return {}
+end
+
+--- @brief default value for boolean
+function meta.Boolean()
+    return false
 end
 
 --- @brief Is x a lua string?
@@ -362,7 +367,7 @@ meta._is_property_private_by_default = false
 
 --- @brief Create a new meta.Type from a table, syntactically convenient
 --- @param typename string Name of type
---- @param table table Table with properties, as well as `public` or `private` subtable
+--- @param table table table with properties
 --- @returns meta.Type
 function meta.new_type_from(typename, table)
 
@@ -408,14 +413,13 @@ end
 
 --- @brief Instantiate object from a meta.Type
 --- @param type meta.Type
+--- @param args table default values, optional
 --- @returns instance
-function meta.new(type, ...)
+function meta.new(type, args)
 
     if not meta.is_type(type) then
         error("[ERROR] In meta.new: Argument is not a type")
     end
-
-    local args = {...}
 
     local x = {}
     x.__meta = {}
@@ -524,6 +528,13 @@ function meta.new(type, ...)
     collect_properties(type, x.__meta.properties, x.__meta.is_property_private)
 
     setmetatable(x, x.__meta)
+
+    if args ~= nil then
+        for name, value in pairs(args) do
+            meta.rawset_property(x, name, value)
+        end
+    end
+
     return x
 end
 

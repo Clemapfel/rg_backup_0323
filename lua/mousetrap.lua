@@ -5,7 +5,7 @@ require "src/log"
 require "src/common"
 require "src/meta"
 
-rt = {}
+rat = {}
 require "src/battle"
 
 
