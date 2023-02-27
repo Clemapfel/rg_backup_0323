@@ -3,7 +3,7 @@
 --- @return void
 function print(...)
     for _, v in pairs({...}) do
-        io.write(v)
+        io.write(tostring(v))
     end
 end
 
@@ -13,7 +13,7 @@ end
 function println(...)
 
     for _, v in pairs({...}) do
-        io.write(v)
+        io.write(tostring(v))
         io.write("\n")
     end
 end
