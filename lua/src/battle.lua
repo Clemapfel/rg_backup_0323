@@ -26,6 +26,24 @@ rat.StatusAilment = meta.new_enum({
     FROZEN = 9
 })
 
+meta.export_enum(rat.StatusAilment, rat)
+
+rat._status_turn_count = (function ()
+    local out = {}
+    out[rat.DEAD] = INFINITY
+    out[rat.KNOCKED_OUT] = INFINITY
+    out[rat.NO_STATUS] = INFINITY
+    out[rat.AT_RISK] = INFINITY
+    out[rat.STUNNED] = INFINITY
+    out[rat.ASLEEP] = INFINITY
+    out[rat.POISONED] = INFINITY
+    out[rat.BLINDED] = INFINITY
+    out[rat.BURNED] = INFINITY
+    out[rat.CHILLED] = INFINITY
+    out[rat.FROZEN] = INFINITY
+    return out
+end)()
+
 --- @brief convert stat level enum to numerical factor
 --- @param level StatLevel
 --- @return number
@@ -114,7 +132,7 @@ rat._BattleEntity = meta.new_type_from("BattleEntity", {
 
     add_status_ailment = meta.Function(),
     remove_status_ailment = meta.Function(),
-    has_status = meta.Function()
+    has_status_ailment = meta.Function()
 });
 
 --- @brief BattleEntity ctor
@@ -130,7 +148,7 @@ function rat.BattleEntity(id)
     })
 
     local status = {}
-    for _, ailment in pairs(rat.StatusAilment) do
+    for  _, ailment in pairs(rat.StatusAilment) do
         status[ailment] = false
     end
 
@@ -138,6 +156,8 @@ function rat.BattleEntity(id)
     return out
 end
 
+--- @brief get id of BattleEntity
+--- @param entity
 function rat._BattleEntity.get_id(entity)
     return meta.rawget_property(entity, "_id")
 end
@@ -513,19 +533,90 @@ end
 
 --- @brief add a status ailment to entity, respects status logic
 --- @param entity BattleEntity
---- @param status StatusAilment
+--- @param new_status StatusAilment
 --- @return void
-function rat._BattleEntity.add_status_ailment(entity, status)
+function rat._BattleEntity.add_status_ailment(entity, new_status)
 
     if meta.typeof(entity) ~= "BattleEntity" then
         error("[ERROR] In rat.add_status_ailment: Argument #1 is not a BattleEntity")
     end
 
-    if not meta.is_enum_value(rat.StatusAilment, status) then
+    if not meta.is_enum_value(rat.StatusAilment, new_status) then
         error("[ERROR] In rat.add_status_ailment: Argument #2 is not a StatusAilment")
     end
 
-    meta.rawset_property(entity, "_status_ailments", status)
+    local has_status = function(which)
+        return meta.rawget_property(entity, "_status_ailments")[which]
+    end
+
+    local set_status = function(which, bool)
+
+        if has_status(which) then return end
+        meta.rawget_property(entity, "_status_ailments")[which] = bool
+    end
+
+    local add_status = function(which)
+        set_status(which, true)
+    end
+
+    local remove_status = function(which)
+        set_status(which, false)
+    end
+
+    if new_status == rat.DEAD then
+
+        for _, s in pairs(rat.StatusAilment) do
+            set_status(s, false)
+        end
+        set_status(rat.StatusAilment)
+
+    elseif new_status == rat.KNOCKED_OUT then
+
+        if has_status(rat.DEAD) then
+            return
+        else
+            for _, s in pairs(rat.StatusAilment) do
+                set_status(s, false)
+            end
+        end
+        set_status(rat.StatusAilment)
+
+    elseif new_status == rat.CHILLED then
+
+        if has_status(rat.CHILLED) then
+            remove_status(rat.CHILLED)
+            add_status(rat.FROZEN)
+        elseif has_status(rat.BURNED) then
+            remove_status(rat.BURNED)
+        else
+            add_status(rat.FROZEN)
+        end
+
+    elseif new_status == rat.FROZEN then
+
+        if has_status(rat.CHILLED) then
+            remove_status(rat.CHILLED)
+            add_status(rat.FROZEN)
+        elseif has_status(rat.BURNED) then
+            remove_status(rat.BURNED)
+        else
+            add_status(rat.FROZEN)
+        end
+
+    elseif new_status == rat.BURNED then
+
+        if has_status(rat.CHILLED) then
+            remove_status(rat.CHILLED)
+        elseif has_status(rat.FROZEN) then
+            remove_status(rat.FROZEN)
+        else
+            add_status(rat.BURNED)
+        end
+    else
+        add_status(new_status)
+    end
+
+    meta.rawget_property(entity, "_status_ailments")[new_status] = true
 end
 
 --- @brief does entity have a status ailment
@@ -535,17 +626,33 @@ end
 function rat._BattleEntity.has_status_ailment(entity, status)
 
     if meta.typeof(entity) ~= "BattleEntity" then
-        error("[ERROR] In rat.add_status_ailment: Argument #1 is not a BattleEntity")
+        error("[ERROR] In rat.has_status_ailment: Argument #1 is not a BattleEntity")
     end
 
-    if not meta.is_enum_value(StatusAilment, status) then
-        error("[ERROR] In rat.add_status_ailment: Argument #2 is not a StatusAilment")
+    if not meta.is_enum_value(rat.StatusAilment, status) then
+        error("[ERROR] In rat.has_status_ailment: Argument #2 is not a StatusAilment")
     end
 
     return meta.rawget_property(entity, "_status_ailments")[status]
 end
 
-instance = rat.BattleEntity("test")
-instance:add_status_ailment(instance, rat.StatusAilment.DEAD)
+--- @brief does entity have a status ailment
+--- @param entity BattleEntity
+--- @param status StatusAilment
+--- @return boolean
+function rat._BattleEntity.remove_status_ailment(entity, status)
 
-print(instance:has_status_ailment(instance, rat.StatusAilment.DEAD))
+    if meta.typeof(entity) ~= "BattleEntity" then
+        error("[ERROR] In rat.has_status_ailment: Argument #1 is not a BattleEntity")
+    end
+
+    if not meta.is_enum_value(rat.StatusAilment, status) then
+        error("[ERROR] In rat.has_status_ailment: Argument #2 is not a StatusAilment")
+    end
+
+    meta.rawget_property(entity, "_status_ailments")[status] = false
+end
+
+
+instance = rat.BattleEntity("")
+println(meta.isa(instance, rat._BattleEntity))

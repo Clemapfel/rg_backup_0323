@@ -62,7 +62,7 @@ function meta.is_nil(x)
 end
 
 --- @brief Get type of meta instantiated object
---- @param x meta.Object
+--- @param x any
 --- @returns string
 function meta.typeof(x)
 
@@ -73,7 +73,7 @@ function meta.typeof(x)
     end
 end
 
---- @type meta.Enum
+--- @class meta.Enum
 meta.Enum = "Enum"
 
 --- @brief generate new enum
@@ -135,6 +135,11 @@ function meta.is_enum(enum)
     if not meta.is_table(enum) then
         return false
     end
+
+    if rawget(enum, "__meta") == nil then
+        return false
+    end
+
     return rawget(enum, "__meta").typename == meta.Enum
 end
 
@@ -161,7 +166,29 @@ function meta.is_enum_value(enum, value)
     return false
 end
 
---- @type meta.Type
+--- @brief export all enum constants to table
+--- @param enum meta.Enum
+--- @param table table
+function meta.export_enum(enum, table)
+
+    if not meta.is_enum(enum) then
+        error("[ERROR] In meta.export_enum: Argument #1 is not an enum")
+    end
+
+    if not meta.is_table(table) then
+        error("[ERROR] In meta.export_enum: Argument #2 is not a table")
+    end
+
+    for name, value in pairs(enum) do
+
+        if table[name] ~= nil then
+            print("[WARNING] In meta.export_enum: Enum key `" .. name .. "` overrides an already existing assignment")
+        end
+        table[name] = value
+    end
+end
+
+--- @class meta.Type
 meta.Type = "Type"
 
 --- @brief Create a new meta.Type
@@ -250,6 +277,27 @@ function meta.is_type(x)
     return x.__meta ~= nil and x.__meta.name ~= nil and x.__meta.is_property_private ~= nil and x.__meta.typename == meta.Type
 end
 
+--- @brief is object an instance of type
+--- @param entity any
+--- @param type meta.Type
+function meta.isa(entity, type)
+
+    if not meta.is_type(type) then
+        error("[ERROR] in meta.isa: Argument #2 is not a type")
+    end
+
+    if not meta.is_table(entity) then
+        return false
+    end
+
+    local m = rawget(entity, "__meta")
+    if not meta.is_table(m) then
+        return false
+    end
+
+    return m.type == type.name
+end
+
 --- @brief Add property to meta.Type
 --- @param type meta.Type
 --- @param property_name string
@@ -297,7 +345,7 @@ function meta.set_property_is_private(type, property_name, is_private)
 end
 
 --- @brief Was property of meta instance declared private?
---- @param x meta.Object
+--- @param x any
 --- @returns boolean
 function meta.is_property_private(type, property_name)
     return rawget(type, "__meta").is_property_private[property_name]
@@ -553,7 +601,7 @@ function meta.is_instance(x)
 end
 
 --- @brief Access the property of an object irregardless of scope
---- @param x meta.Object
+--- @param x any
 --- @param property_name string
 --- @returns value of property
 function meta.rawget_property(x, property_name)
@@ -566,7 +614,7 @@ function meta.rawget_property(x, property_name)
 end
 
 --- @brief Mutate property of an object irregardless of scope
---- @param x meta.Object
+--- @param x any
 --- @param property_name string
 --- @param value any
 --- @returns void

@@ -234,3 +234,9 @@ function serialize(object_identifier, object, inject_sourcecode)
     serialize_inner(buffer, object, 0)
     return table.concat(buffer, "")
 end
+
+--- @brief positive infinity
+INFINITY = 1/0
+
+--- @brief negative infinity
+NEGATIVE_INFINITY = -1/0
