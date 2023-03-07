@@ -1,11 +1,41 @@
 signals = {}
 
 --- @class signals.ID
-signals.ID = string
+signals.ID = "string"
 
+signals.set_signal_blocked = function(instance, signal_name, b)
+    rawget(instance, "__signals")[signal_name].blocked = b
+end
 
-instance = {}
-instance.__signals = {}
+signals.get_signal_blocked = function(instance, signal_name)
+    return rawget(instance, "__signals")[signal_name].blocked
+end
+
+signals.connect_signal = function(instance, signal_name, f, data)
+    local s = rawget(instance, "__signals")
+    s[signal_name].f = f
+    s[signal_name].data = data
+    s[signal_name].blocked = false
+end
+
+signals.disconnect_signal = function(instance, signal_name)
+    local s = rawget(instance, "__signals")
+    s[signal_name].f = function()  end
+    s[signal_name].data = nil
+    s[signal_name].blocked = false
+end
+
+signals.emit_signal = function(instance, signal_name)
+
+    local s = rawget(instance, "__signals")
+    local f = s[signal_name].f
+    local data = s[signal_name].data
+    local blocked = s[signal_name].blocked
+
+    if not blocked then
+        f(x, data)
+    end
+end
 
 --- @brief initialize signal component
 --- @param entity table
@@ -18,6 +48,10 @@ function signals._initialize(x, signal_name)
 
     if not meta.is_string(signal_name) then
         error("[ERROR] In signals._initialize: Argument #2 is not a signals.ID")
+    end
+
+    if not meta.is_valid_name(signal_name) then
+        error("[ERROR] In signals._initialize: \"" .. signal_name .. "\" is not a valid identifier")
     end
 
     if not meta.is_table(rawget(x, "__signals")) then
@@ -33,39 +67,50 @@ function signals._initialize(x, signal_name)
     end
 
     meta.rawadd_property(x, "set_signal_" .. signal_name .. "_blocked", function(instance, b)
-        instance.__signals[signal_name].blocked = b
+        rawget(instance, "__signals")[signal_name].blocked = b
     end)
 
     meta.rawadd_property(x, "get_signal_" .. signal_name .. "_blocked", function(instance)
-        return instance.__signals[signal_name].blocked
+        return rawget(instance, "__signals")[signal_name].blocked
     end)
 
     meta.rawadd_property(x, "connect_signal_" .. signal_name, function(instance, f, data)
-        instance.__signals[signal_name].f = f
-        instance.__signals[signal_name].data = data
-        instance.__signals[signal_name].blocked = false
+        local s = rawget(instance, "__signals")
+        s[signal_name].f = f
+        s[signal_name].data = data
+        s[signal_name].blocked = false
     end)
 
     meta.rawadd_property(x, "disconnect_signal_" .. signal_name, function(instance)
-        instance.__signals[signal_name].f = function() end
-        instance.__signals[signal_name].data = 0
-        instance.__signals[signal_name].blocked = false
+        local s = rawget(instance, "__signals")
+        s[signal_name].f = function()  end
+        s[signal_name].data = nil
+        s[signal_name].blocked = false
     end)
 
     meta.rawadd_property(x, "emit_signal_" .. signal_name, function(instance)
 
-        local f = instance.__signals[signal_name].f
-        local data = instance.__signals[signal_name].data
-        local blocked = instance.__signals[signal_name].blocked
+        local s = rawget(instance, "__signals")
+        local f = s[signal_name].f
+        local data = s[signal_name].data
+        local blocked = s[signal_name].blocked
 
         if not blocked then
-            f(data)
+            f(x, data)
         end
     end)
 
     return x
 end
 
-e = meta.new(meta.new_type_from("Test_t", {}))
-signals._initialize(e, "test")
-e:set_signal_test_blocked(true)
+--- @brief add signal infrastructure to object
+--- @param x any
+--- @param signal_name signals.ID
+function signals.add_signal(x, signal_name)
+    signals._initialize(x, signal_name)
+    return x
+end
+
+--- @brief unit test
+
+

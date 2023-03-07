@@ -73,6 +73,16 @@ function meta.typeof(x)
     end
 end
 
+--- @brief check if id can be used as a valid lua variable name
+--- @param id string
+function meta.is_valid_name(str)
+
+    local before = _G[str]  -- prevent accidentally override global var
+    local out, _ = pcall(load(str .. "=nil"))
+    _G[str] = before
+    return out
+end
+
 --- @class meta.Enum
 meta.Enum = "Enum"
 
@@ -204,6 +214,10 @@ function meta.new_type(typename)
         error("[ERROR] In meta.new_type: typename has to be string")
     end
 
+    if not meta.is_valid_name(typename) then
+        error("[ERROR] In meta.new_type: " .. typename .. " is not a valid variable identifier")
+    end
+
     local x = {}
     x.__meta = {}
     x.__meta.name = typename
@@ -211,8 +225,8 @@ function meta.new_type(typename)
     x.__meta.is_property_private = {}
     x.__meta.super = {}
 
-    x.__meta.__call = function(this, ...)
-        return meta.new(this, ...)
+    x.__meta.__call = function(this)
+        return meta.new(this)
     end
 
     x.__meta.__tostring = function(this)
@@ -462,9 +476,8 @@ end
 
 --- @brief Instantiate object from a meta.Type
 --- @param type meta.Type
---- @param args table default values, optional
 --- @returns instance
-function meta.new(type, args)
+function meta.new(type)
 
     if not meta.is_type(type) then
         error("[ERROR] In meta.new: Argument is not a type")
