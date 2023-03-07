@@ -3,29 +3,69 @@ signals = {}
 --- @class signals.ID
 signals.ID = "string"
 
-signals.set_signal_blocked = function(instance, signal_name, b)
-    rawget(instance, "__signals")[signal_name].blocked = b
+--- @brief check if object has a signal
+--- @param instance any
+--- @param signal_name signals.ID
+function signals.has_signal(instance, signal_name)
+
+    if not meta.is_string(signal_name) then
+        error("[ERROR] In signals.has_signal: Argument #2 is not a signal id")
+    end
+
+    return meta.is_table(rawget(instance, "__signals")[signal_name])
 end
 
-signals.get_signal_blocked = function(instance, signal_name)
+--- @brief block a signal
+--- @param instance any
+--- @param signal_name signals.ID
+--- @param blocked boolean
+function signals.set_signal_blocked(instance, signal_name, blocked)
+
+    if not signals.has_signal(instance, signal_name) then
+        error("[ERROR] In signals.set_signal_blocked: Object has no signal \"" .. signal_name .. "\"")
+    end
+
+    rawget(instance, "__signals")[signal_name].blocked = blocked
+end
+
+function signals.get_signal_blocked(instance, signal_name)
+
+    if not signals.has_signal(instance, signal_name) then
+        error("[ERROR] In signals.get_signal_blocked: Object has no signal \"" .. signal_name .. "\"")
+    end
+
     return rawget(instance, "__signals")[signal_name].blocked
 end
 
-signals.connect_signal = function(instance, signal_name, f, data)
+function signals.connect_signal(instance, signal_name, f, data)
+
+    if not signals.has_signal(instance, signal_name) then
+        error("[ERROR] In signals.connect_signal: Object has no signal \"" .. signal_name .. "\"")
+    end
+
     local s = rawget(instance, "__signals")
     s[signal_name].f = f
     s[signal_name].data = data
     s[signal_name].blocked = false
 end
 
-signals.disconnect_signal = function(instance, signal_name)
+function signals.disconnect_signal(instance, signal_name)
+
+    if not signals.has_signal(instance, signal_name) then
+        error("[ERROR] In signals.disconnect_signal: Object has no signal \"" .. signal_name .. "\"")
+    end
+
     local s = rawget(instance, "__signals")
     s[signal_name].f = function()  end
     s[signal_name].data = nil
     s[signal_name].blocked = false
 end
 
-signals.emit_signal = function(instance, signal_name)
+function signals.emit_signal(instance, signal_name)
+
+    if not signals.has_signal(instance, signal_name) then
+        error("[ERROR] In signals.emit_signal: Object has no signal \"" .. signal_name .. "\"")
+    end
 
     local s = rawget(instance, "__signals")
     local f = s[signal_name].f
@@ -104,14 +144,11 @@ function signals._test()
     local instance = meta.new(meta.new_type_from("Test", {}))
 
     signals.add_signal(instance, "test")
+    test.assert_that("has_signal", signals.has_signal(instance, "test"))
 
-    local res = false
-    instance:connect_signal_test(function(x)
-        res = x
-    end, true)
-
-    instance:emit_signal_test()
-    test.assert_that("emit result", res)
+    instance:set_signal_test_blocked(true)
+    test.assert_that("blocked", instance:get_signal_test_blocked())
+    signals.set_signal_blocked(instance, "test", false)
 
     test.end_test()
 end
