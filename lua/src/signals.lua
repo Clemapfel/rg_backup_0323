@@ -1,3 +1,4 @@
+--- @brief signaling system
 signals = {}
 
 --- @class signals.ID
@@ -6,6 +7,7 @@ signals.ID = "string"
 --- @brief check if object has a signal
 --- @param instance any
 --- @param signal_name signals.ID
+--- @return boolean
 function signals.has_signal(instance, signal_name)
 
     if not meta.is_string(signal_name) then
@@ -19,6 +21,7 @@ end
 --- @param instance any
 --- @param signal_name signals.ID
 --- @param blocked boolean
+--- @return void
 function signals.set_signal_blocked(instance, signal_name, blocked)
 
     if not signals.has_signal(instance, signal_name) then
@@ -28,6 +31,10 @@ function signals.set_signal_blocked(instance, signal_name, blocked)
     rawget(instance, "__signals")[signal_name].blocked = blocked
 end
 
+--- @brief check wether signal is blocked
+--- @param instance any
+--- @param signal_name signals.ID
+--- @return boolean
 function signals.get_signal_blocked(instance, signal_name)
 
     if not signals.has_signal(instance, signal_name) then
@@ -37,6 +44,11 @@ function signals.get_signal_blocked(instance, signal_name)
     return rawget(instance, "__signals")[signal_name].blocked
 end
 
+--- @brief connect command to signal
+--- @param instance any
+--- @param signal_name signals.ID
+--- @param data any
+--- @return void
 function signals.connect_signal(instance, signal_name, f, data)
 
     if not signals.has_signal(instance, signal_name) then
@@ -48,6 +60,10 @@ function signals.connect_signal(instance, signal_name, f, data)
     s[signal_name].data = data
 end
 
+--- @brief associate noop action with signal
+--- @param instance any
+--- @param signal_name signals.ID
+--- @retrun void
 function signals.disconnect_signal(instance, signal_name)
 
     if not signals.has_signal(instance, signal_name) then
@@ -60,6 +76,10 @@ function signals.disconnect_signal(instance, signal_name)
     s[signal_name].blocked = false
 end
 
+--- @brief emit a signal, if it not blocked its associated action will be called
+--- @param instance any
+--- @param signal_name signals.ID
+--- @return void
 function signals.emit_signal(instance, signal_name)
 
     if not signals.has_signal(instance, signal_name) then
@@ -79,6 +99,7 @@ end
 --- @brief initialize signal component
 --- @param entity table
 --- @param signal_name signals.ID
+--- @return void
 function signals._initialize(x, signal_name)
 
     if not meta.is_instance(x) then
@@ -124,13 +145,12 @@ function signals._initialize(x, signal_name)
     meta.rawadd_property(x, "emit_signal_" .. signal_name, function(instance)
         signals.emit_signal(instance, signal_name)
     end)
-
-    return x
 end
 
 --- @brief add signal infrastructure to object
 --- @param x any
 --- @param signal_name signals.ID
+--- @return void
 function signals.add_signal(x, signal_name)
     signals._initialize(x, signal_name)
     return x
