@@ -631,6 +631,21 @@ function meta.rawset_property(x, property_name, new_value)
     x.__meta.properties[property_name] = new_value
 end
 
+--- @brief manually add a property, works on types and instance
+--- @param x any
+--- @param name string
+--- @param value any
+--- @return void
+function meta.rawadd_property(x, property_name, value)
+
+    if not meta.is_instance(x) then
+        error("[ERROR] In meta.rawget_property: Object is not a Type instance")
+    end
+
+    x.__meta.properties[property_name] = value
+    x.__meta.is_property_private[property_name] = false
+end
+
 
 --- @brief unit test
 function meta._test()

@@ -25,24 +25,7 @@ rat.StatusAilment = meta.new_enum({
     CHILLED = 8,
     FROZEN = 9
 })
-
 meta.export_enum(rat.StatusAilment, rat)
-
-rat._status_turn_count = (function ()
-    local out = {}
-    out[rat.DEAD] = INFINITY
-    out[rat.KNOCKED_OUT] = INFINITY
-    out[rat.NO_STATUS] = INFINITY
-    out[rat.AT_RISK] = INFINITY
-    out[rat.STUNNED] = INFINITY
-    out[rat.ASLEEP] = INFINITY
-    out[rat.POISONED] = INFINITY
-    out[rat.BLINDED] = INFINITY
-    out[rat.BURNED] = INFINITY
-    out[rat.CHILLED] = INFINITY
-    out[rat.FROZEN] = INFINITY
-    return out
-end)()
 
 --- @brief convert stat level enum to numerical factor
 --- @param level StatLevel
@@ -74,7 +57,7 @@ function rat._stat_level_to_factor(level)
     end
 end
 
---- @class BattleEntity
+--- @class rat.BattleEntity
 rat._BattleEntity = meta.new_type_from("BattleEntity", {
 
     private = {
@@ -94,7 +77,8 @@ rat._BattleEntity = meta.new_type_from("BattleEntity", {
         _defense_level = rat.StatLevel.ZERO,
         _speed_level = rat.StatLevel.ZERO,
 
-        _status_ailments = {}
+        _status_ailments = {},
+        _status_ailments_turn_count = {}
     },
 
     get_hp = meta.Function(),
@@ -148,11 +132,14 @@ function rat.BattleEntity(id)
     })
 
     local status = {}
+    local status_turn_count = {}
     for  _, ailment in pairs(rat.StatusAilment) do
         status[ailment] = false
+        status_turn_count[ailment] = 0
     end
 
     meta.rawset_property(out, "_status_ailments", status)
+    meta.rawset_property(out, "_status_ailments_turn_count", status)
     return out
 end
 
@@ -163,7 +150,7 @@ function rat._BattleEntity.get_id(entity)
 end
 
 --- @brief get attack base
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_attack_base(entity)
 
@@ -175,7 +162,7 @@ function rat._BattleEntity.get_attack_base(entity)
 end
 
 --- @brief get attack modification level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return StatLevel
 function rat._BattleEntity.get_attack_level(entity)
 
@@ -187,7 +174,7 @@ function rat._BattleEntity.get_attack_level(entity)
 end
 
 --- @brief get attack, takes level into account
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_attack(entity)
 
@@ -199,7 +186,7 @@ function rat._BattleEntity.get_attack(entity)
 end
 
 --- @brief get defense base
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_defense_base(entity)
 
@@ -211,7 +198,7 @@ function rat._BattleEntity.get_defense_base(entity)
 end
 
 --- @brief get defense modification level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return StatLevel
 function rat._BattleEntity.get_defense_level(entity)
 
@@ -223,7 +210,7 @@ function rat._BattleEntity.get_defense_level(entity)
 end
 
 --- @brief get defense, takes level into account
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_defense(entity)
 
@@ -235,7 +222,7 @@ function rat._BattleEntity.get_defense(entity)
 end
 
 --- @brief get speed base
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_speed_base(entity)
 
@@ -247,7 +234,7 @@ function rat._BattleEntity.get_speed_base(entity)
 end
 
 --- @brief get speed modification level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return StatLevel
 function rat._BattleEntity.get_speed_level(entity)
 
@@ -259,7 +246,7 @@ function rat._BattleEntity.get_speed_level(entity)
 end
 
 --- @brief get speed, takes level into account
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_speed(entity)
 
@@ -271,7 +258,7 @@ function rat._BattleEntity.get_speed(entity)
 end
 
 --- @brief add to attack level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param n_levels number
 --- @return void
 function rat._BattleEntity.raise_attack(entity, n_levels)
@@ -289,7 +276,7 @@ function rat._BattleEntity.raise_attack(entity, n_levels)
 end
 
 --- @brief subtract from attack level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param n_levels number
 --- @return void
 function rat._BattleEntity.lower_attack(entity, n_levels)
@@ -302,7 +289,7 @@ function rat._BattleEntity.lower_attack(entity, n_levels)
 end
 
 --- @brief set attack level back to default
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return void
 function rat._BattleEntity.reset_attack(entity)
 
@@ -314,7 +301,7 @@ function rat._BattleEntity.reset_attack(entity)
 end
 
 --- @brief add to defense level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param n_levels number
 --- @return void
 function rat._BattleEntity.raise_defense(entity, n_levels)
@@ -332,7 +319,7 @@ function rat._BattleEntity.raise_defense(entity, n_levels)
 end
 
 --- @brief subtract from defense level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param n_levels number
 --- @return void
 function rat._BattleEntity.lower_defense(entity, n_levels)
@@ -345,7 +332,7 @@ function rat._BattleEntity.lower_defense(entity, n_levels)
 end
 
 --- @brief set defense level back to default
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return void
 function rat._BattleEntity.reset_defense(entity)
 
@@ -357,7 +344,7 @@ function rat._BattleEntity.reset_defense(entity)
 end
 
 --- @brief add to speed level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param n_levels number
 --- @return void
 function rat._BattleEntity.raise_speed(entity, n_levels)
@@ -375,7 +362,7 @@ function rat._BattleEntity.raise_speed(entity, n_levels)
 end
 
 --- @brief subtract from speed level
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param n_levels number
 --- @return void
 function rat._BattleEntity.lower_speed(entity, n_levels)
@@ -388,7 +375,7 @@ function rat._BattleEntity.lower_speed(entity, n_levels)
 end
 
 --- @brief set speed level back to default
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return void
 function rat._BattleEntity.reset_speed(entity)
 
@@ -400,7 +387,7 @@ function rat._BattleEntity.reset_speed(entity)
 end
 
 --- @brief raise hp of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_hp(entity)
 
@@ -412,7 +399,7 @@ function rat._BattleEntity.get_hp(entity)
 end
 
 --- @brief raise hp of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_hp_base(entity)
 
@@ -424,7 +411,7 @@ function rat._BattleEntity.get_hp_base(entity)
 end
 
 --- @brief raise hp of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param value number
 --- @return void
 function rat._BattleEntity.add_hp(entity, value)
@@ -440,7 +427,7 @@ function rat._BattleEntity.add_hp(entity, value)
 end
 
 --- @brief reduce hp of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param value number
 --- @return void
 function rat._BattleEntity.reduce_hp(entity, value)
@@ -453,7 +440,7 @@ function rat._BattleEntity.reduce_hp(entity, value)
 end
 
 --- @brief set hp of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param value number
 --- @return void
 function rat._BattleEntity.set_hp(entity, value)
@@ -466,7 +453,7 @@ function rat._BattleEntity.set_hp(entity, value)
 end
 
 --- @brief raise ap of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_ap(entity)
 
@@ -478,7 +465,7 @@ function rat._BattleEntity.get_ap(entity)
 end
 
 --- @brief raise ap of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @return number
 function rat._BattleEntity.get_ap_base(entity)
 
@@ -490,7 +477,7 @@ function rat._BattleEntity.get_ap_base(entity)
 end
 
 --- @brief raise ap of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param value number
 --- @return void
 function rat._BattleEntity.add_ap(entity, value)
@@ -506,7 +493,7 @@ function rat._BattleEntity.add_ap(entity, value)
 end
 
 --- @brief reduce ap of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param value number
 --- @return void
 function rat._BattleEntity.reduce_ap(entity, value)
@@ -519,7 +506,7 @@ function rat._BattleEntity.reduce_ap(entity, value)
 end
 
 --- @brief set ap of entity
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param value number
 --- @return void
 function rat._BattleEntity.set_ap(entity, value)
@@ -532,7 +519,7 @@ function rat._BattleEntity.set_ap(entity, value)
 end
 
 --- @brief add a status ailment to entity, respects status logic
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param new_status StatusAilment
 --- @return void
 function rat._BattleEntity.add_status_ailment(entity, new_status)
@@ -620,7 +607,7 @@ function rat._BattleEntity.add_status_ailment(entity, new_status)
 end
 
 --- @brief does entity have a status ailment
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param status StatusAilment
 --- @return boolean
 function rat._BattleEntity.has_status_ailment(entity, status)
@@ -637,22 +624,83 @@ function rat._BattleEntity.has_status_ailment(entity, status)
 end
 
 --- @brief does entity have a status ailment
---- @param entity BattleEntity
+--- @param entity rat.BattleEntity
 --- @param status StatusAilment
 --- @return boolean
 function rat._BattleEntity.remove_status_ailment(entity, status)
 
     if meta.typeof(entity) ~= "BattleEntity" then
-        error("[ERROR] In rat.has_status_ailment: Argument #1 is not a BattleEntity")
+        error("[ERROR] In rat.remove_status_ailment: Argument #1 is not a BattleEntity")
     end
 
     if not meta.is_enum_value(rat.StatusAilment, status) then
-        error("[ERROR] In rat.has_status_ailment: Argument #2 is not a StatusAilment")
+        error("[ERROR] In rat.remove_status_ailment: Argument #2 is not a StatusAilment")
     end
 
     meta.rawget_property(entity, "_status_ailments")[status] = false
 end
 
+--- @brief apply turn count to status
+--- @param entity rat.BattleEntity
+function rat._resolve_status_ailment_turn_count_advance(entity)
 
-instance = rat.BattleEntity("")
-println(meta.isa(instance, rat._BattleEntity))
+    if meta.typeof(entity) ~= "BattleEntity" then
+        error("[ERROR] In rat.apply_turn_count_to_status_ailments: Argument #1 is not a BattleEntity")
+    end
+
+    rat._status_turn_count = (function ()
+        local out = {}
+        out[rat.DEAD] = INFINITY
+        out[rat.KNOCKED_OUT] = INFINITY
+        out[rat.NO_STATUS] = INFINITY
+        out[rat.AT_RISK] = 3
+        out[rat.STUNNED] = 1
+        out[rat.ASLEEP] = INFINITY
+        out[rat.POISONED] = INFINITY
+        out[rat.BLINDED] = INFINITY
+        out[rat.BURNED] = INFINITY
+        out[rat.CHILLED] = INFINITY
+        out[rat.FROZEN] = INFINITY
+        return out
+    end)()
+
+    rat._status_ailment_effect = (function()
+        local out = {}
+        out[rat.DEAD] = nil
+        out[rat.KNOCKED_OUT] = nil
+        out[rat.NO_STATUS] = nil
+        out[rat.AT_RISK] = 3
+        out[rat.STUNNED] = 1
+        out[rat.ASLEEP] = INFINITY
+        out[rat.POISONED] = INFINITY
+        out[rat.BLINDED] = INFINITY
+        out[rat.BURNED] = INFINITY
+        out[rat.CHILLED] = INFINITY
+        out[rat.FROZEN] = INFINITY
+    end)()
+
+    local turn_counts = meta.rawget_property(entity, "_status_ailments_turn_count")
+    for  _, ailment in pairs(rat.StatusAilment) do
+
+        turn_counts[ailment] = turn_counts[ailment] + 1
+        if turn_counts[ailment] > rat._status_turn_count[ailment] then
+            rat.remove_status_ailment(entity, ailment)
+        end
+    end
+end
+
+rat.BattleContinuousEffect = meta.new_type_from("BattleContinuousEffect", {
+
+    -- applied as base += factor * base
+    attack_base_factor = meta.Number(0),
+    defense_base_factor = meta.Number(0),
+    speed_base_factor = meta.Number(0),
+
+    -- applied as stat += factor * state
+    attack_factor = meta.Number(0),
+    defense_factor = meta.Number(0),
+    speed_factor = meta.Number(0),
+
+    -- applied at start of round
+    start_of_round = {}
+})
