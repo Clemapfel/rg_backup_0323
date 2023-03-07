@@ -33,7 +33,7 @@ signals.emit_signal = function(instance, signal_name)
     local blocked = s[signal_name].blocked
 
     if not blocked then
-        f(x, data)
+        f(data)
     end
 end
 
@@ -67,37 +67,23 @@ function signals._initialize(x, signal_name)
     end
 
     meta.rawadd_property(x, "set_signal_" .. signal_name .. "_blocked", function(instance, b)
-        rawget(instance, "__signals")[signal_name].blocked = b
+        signals.set_signal_blocked(instance, signal_name, b)
     end)
 
     meta.rawadd_property(x, "get_signal_" .. signal_name .. "_blocked", function(instance)
-        return rawget(instance, "__signals")[signal_name].blocked
+        return signals.get_signal_blocked(instance, signal_name)
     end)
 
     meta.rawadd_property(x, "connect_signal_" .. signal_name, function(instance, f, data)
-        local s = rawget(instance, "__signals")
-        s[signal_name].f = f
-        s[signal_name].data = data
-        s[signal_name].blocked = false
+        signals.connect_signal(instance, signal_name, f, data)
     end)
 
     meta.rawadd_property(x, "disconnect_signal_" .. signal_name, function(instance)
-        local s = rawget(instance, "__signals")
-        s[signal_name].f = function()  end
-        s[signal_name].data = nil
-        s[signal_name].blocked = false
+        signals.disconnect_signal(instance, signal_name)
     end)
 
     meta.rawadd_property(x, "emit_signal_" .. signal_name, function(instance)
-
-        local s = rawget(instance, "__signals")
-        local f = s[signal_name].f
-        local data = s[signal_name].data
-        local blocked = s[signal_name].blocked
-
-        if not blocked then
-            f(x, data)
-        end
+        signals.emit_signal(instance, signal_name)
     end)
 
     return x
@@ -112,5 +98,23 @@ function signals.add_signal(x, signal_name)
 end
 
 --- @brief unit test
+function signals._test()
+
+    test.start_test("signals")
+    local instance = meta.new(meta.new_type_from("Test", {}))
+
+    signals.add_signal(instance, "test")
+
+    local res = false
+    instance:connect_signal_test(function(x)
+        res = x
+    end, true)
+
+    instance:emit_signal_test()
+    test.assert_that("emit result", res)
+
+    test.end_test()
+end
+signals._test()
 
 
