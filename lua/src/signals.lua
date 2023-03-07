@@ -46,7 +46,6 @@ function signals.connect_signal(instance, signal_name, f, data)
     local s = rawget(instance, "__signals")
     s[signal_name].f = f
     s[signal_name].data = data
-    s[signal_name].blocked = false
 end
 
 function signals.disconnect_signal(instance, signal_name)
@@ -148,10 +147,19 @@ function signals._test()
 
     instance:set_signal_test_blocked(true)
     test.assert_that("blocked", instance:get_signal_test_blocked())
-    signals.set_signal_blocked(instance, "test", false)
+
+    local count = 0
+    instance:connect_signal_test(function (x)
+        count = count + 1
+    end, true)
+
+    instance:emit_signal_test()
+    test.assert_that("blocked emission",  count == 0)
+
+    instance:set_signal_test_blocked(false)
+    instance:emit_signal_test()
+    test.assert_that("unblocked emission", count == 1)
 
     test.end_test()
 end
-signals._test()
-
 
