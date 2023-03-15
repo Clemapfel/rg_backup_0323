@@ -156,6 +156,18 @@ function signals.add_signal(x, signal_name)
     return x
 end
 
+--- @brief add signal infrastructure to object
+--- @param x any
+--- @param signal_name signals.ID
+--- @return void
+function signals.add_signals(x, signals)
+
+    for _, signal_name in ipairs(signals) do
+        signals._initialize(x, signal_name)
+    end
+    return x
+end
+
 --- @brief unit test
 function signals._test()
 

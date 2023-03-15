@@ -702,5 +702,7 @@ rat.BattleContinuousEffect = meta.new_type_from("BattleContinuousEffect", {
     speed_factor = meta.Number(0),
 
     -- applied at start of round
-    start_of_round = {}
+
 })
+
+
